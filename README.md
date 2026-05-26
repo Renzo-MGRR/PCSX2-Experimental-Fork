@@ -1,3 +1,17 @@
+## Mods
+
+To add a mod, into the root of your game (in folder format, extract it if it's an ISO) add a folder called "Mods". Then you need to create a folder for your mod. For example, "Gohan SSJ4". Inside of that folder you must create a mod.ini file containing something similar to the example, but with your own values of course:
+[Mod]
+Name = Gohan SSJ4
+Author = VivetheJoestar
+Version = 1.0.0
+Along with that, in the same folder, you must create the folder structure to replace the file you need inside the AFS. For example, DATA\PZS3EU1.AFS\Future_Gohan_0_1p.pak
+
+This process will be automated and integrated into the PCSX2 UI in future updates.
+A mod example is included in the first release.
+
+Below is the original readme:
+
 # PCSX2
 
 ![Windows Build Status](https://img.shields.io/github/actions/workflow/status/PCSX2/pcsx2/windows_build_matrix.yml?label=%F0%9F%96%A5%EF%B8%8F%20Windows%20Builds)
