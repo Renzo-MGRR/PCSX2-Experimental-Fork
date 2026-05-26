@@ -1,5 +1,7 @@
-## Mods
+# About this fork
+This fork is intended to be use mostly on Dragon Ball Z: Budokai Tenkaichi 3, although other games might be supported, especially the folder format, since I tested it for a bit with other games. Windows only for now.
 
+## Mods
 To add a mod, into the root of your game (in folder format, extract it if it's an ISO) add a folder called "Mods". Then you need to create a folder for your mod. For example, "Gohan SSJ4". Inside of that folder you must create a mod.ini file containing something similar to the example, but with your own values of course:
 [Mod]
 Name = Gohan SSJ4
