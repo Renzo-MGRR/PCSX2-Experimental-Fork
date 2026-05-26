@@ -21,6 +21,7 @@
 #include "Settings/HotkeySettingsWidget.h"
 #include "Settings/InterfaceSettingsWidget.h"
 #include "Settings/MemoryCardSettingsWidget.h"
+#include "Settings/ModSettingsWidget.h"
 #include "Settings/DebugSettingsWidget.h"
 #include "SettingsWindow.h"
 
@@ -144,6 +145,14 @@ void SettingsWindow::setupUi(const GameList::Entry* game)
 			tr("<strong>Cheats</strong><hr>This section allows you to select which cheats you wish to enable. You "
 			   "cannot enable/disable cheats without labels for old-format pnach files, those will automatically "
 			   "activate if the main cheat enable option is checked."));
+
+		if (game && game->type == GameList::EntryType::PS2DiscFolder)
+		{
+			addWidget(m_mod_settings = new ModSettingsWidget(this, game, m_ui.settingsContainer),
+				tr("Mods"), QStringLiteral("tools-line"),
+				tr("<strong>Mods</strong><hr>Enable and order folder-based mods. Mods are loaded in top-to-bottom order, "
+				   "and can replace files inside AFS archives without rebuilding the ISO."));
+		}
 	}
 
 	// Only show the game fixes for per-game settings, there's really no reason to be setting them globally.

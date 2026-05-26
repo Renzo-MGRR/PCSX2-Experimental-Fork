@@ -185,7 +185,10 @@ void GameSummaryWidget::populateTrackList(const GameList::Entry* entry)
 	if (entry->type != GameList::EntryType::PS1Disc && entry->type != GameList::EntryType::PS2Disc)
 	{
 		m_ui.verify->setEnabled(false);
-		m_ui.verifyResult->setPlainText(tr("Game is not a CD/DVD."));
+		if (entry->type == GameList::EntryType::PS2DiscFolder)
+			m_ui.verifyResult->setPlainText(tr("Folder-based game; track list unavailable."));
+		else
+			m_ui.verifyResult->setPlainText(tr("Game is not a CD/DVD."));
 		return;
 	}
 

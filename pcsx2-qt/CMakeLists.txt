@@ -149,6 +149,8 @@ target_sources(pcsx2-qt PRIVATE
 	Settings/MemoryCardSettingsWidget.cpp
 	Settings/MemoryCardSettingsWidget.h
 	Settings/MemoryCardSettingsWidget.ui
+	Settings/ModSettingsWidget.cpp
+	Settings/ModSettingsWidget.h
 	Settings/OSDSettingsWidget.cpp
 	Settings/OSDSettingsWidget.h
 	Settings/OSDSettingsWidget.ui

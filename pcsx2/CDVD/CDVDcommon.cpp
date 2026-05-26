@@ -85,6 +85,9 @@ static int CheckDiskTypeFS(int baseType)
 
 			if (StringUtil::ContainsSubString(data, "BOOT"))
 			{
+				if (CDVDsys_GetSourceType() == CDVD_SourceType::VirtualIso)
+					return (baseType == CDVD_TYPE_DETCTCD) ? CDVD_TYPE_PS2CD : CDVD_TYPE_PS2DVD;
+
 				// PSX CD.
 				return CDVD_TYPE_PSCD;
 			}
@@ -269,7 +272,7 @@ static void DetectDiskType()
 	diskTypeCached = FindDiskType(mType);
 }
 
-static std::string m_SourceFilename[3];
+static std::string m_SourceFilename[4];
 static CDVD_SourceType m_CurrentSourceType = CDVD_SourceType::NoDisc;
 static std::mutex s_cdvd_lock;
 
@@ -345,6 +348,10 @@ void CDVDsys_ChangeSource(CDVD_SourceType type)
 
 		case CDVD_SourceType::NoDisc:
 			CDVD = &CDVDapi_NoDisc;
+			break;
+
+		case CDVD_SourceType::VirtualIso:
+			CDVD = &CDVDapi_VirtualIso;
 			break;
 
 			jNO_DEFAULT;

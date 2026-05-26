@@ -211,11 +211,14 @@ set(pcsx2CDVDSources
 	CDVD/CDVD.cpp
 	CDVD/CDVDdiscReader.cpp
 	CDVD/CDVDisoReader.cpp
+	CDVD/CDVDvirtualiso.cpp
 	CDVD/CDVDdiscThread.cpp
 	CDVD/FlatFileReader.cpp
 	CDVD/InputIsoFile.cpp
 	CDVD/IsoHasher.cpp
 	CDVD/IsoReader.cpp
+	CDVD/VirtualIso.cpp
+	CDVD/VirtualIsoLayout.cpp
 	CDVD/OutputIsoFile.cpp
 	CDVD/ChdFileReader.cpp
 	CDVD/CsoFileReader.cpp
@@ -239,6 +242,8 @@ set(pcsx2CDVDHeaders
 	CDVD/IsoFileFormats.h
 	CDVD/IsoHasher.h
 	CDVD/IsoReader.h
+	CDVD/VirtualIso.h
+	CDVD/VirtualIsoLayout.h
 	CDVD/zlib_indexed.h
 	)
 

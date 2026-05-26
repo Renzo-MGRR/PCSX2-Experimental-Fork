@@ -653,6 +653,12 @@
     <ClCompile Include="CDVD\CDVDisoReader.cpp">
       <Filter>System\Ps2\Iop\CDVD</Filter>
     </ClCompile>
+    <ClCompile Include="CDVD\CDVDvirtualiso.cpp">
+      <Filter>System\Ps2\Iop\CDVD</Filter>
+    </ClCompile>
+    <ClCompile Include="CDVD\VirtualIso.cpp">
+      <Filter>System\Ps2\Iop\CDVD</Filter>
+    </ClCompile>
     <ClCompile Include="IPU\IPU.cpp">
       <Filter>System\Ps2\IPU</Filter>
     </ClCompile>
@@ -1452,6 +1458,7 @@
     <ClCompile Include="GS\GSDrawingEnvironment.cpp">
       <Filter>System\Ps2\GS\Renderers\Software</Filter>
     </ClCompile>
+    <ClCompile Include="CDVD\VirtualIsoLayout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Patch.h">
@@ -2319,6 +2326,9 @@
     <ClInclude Include="CDVD\IsoReader.h">
       <Filter>System\ISO</Filter>
     </ClInclude>
+    <ClInclude Include="CDVD\VirtualIso.h">
+      <Filter>System\ISO</Filter>
+    </ClInclude>
     <ClInclude Include="SIO\Multitap\MultitapProtocol.h">
       <Filter>System\Ps2\Iop\SIO\Multitap</Filter>
     </ClInclude>
@@ -2416,6 +2426,7 @@
     <ClInclude Include="SIO\Pad\PadNegcon.h">
       <Filter>System\Ps2\Iop\SIO\PAD</Filter>
     </ClInclude>
+    <ClInclude Include="CDVD\VirtualIsoLayout.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuildStep Include="rdebug\deci2.h">

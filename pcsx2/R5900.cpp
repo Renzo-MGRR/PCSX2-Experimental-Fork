@@ -675,17 +675,27 @@ void eeloadHook()
 		}
 		else
 		{
-			CDVDDiscType disc_type;
-			std::string disc_elf;
-			cdvdGetDiscInfo(nullptr, &disc_elf, nullptr, nullptr, &disc_type);
-			if (disc_type == CDVDDiscType::PS2Disc)
+			// Prefer cached disc ELF from UpdateDiscDetails(), fall back to querying the disc.
+			const std::string disc_elf_cached = VMManager::GetDiscELF();
+			Console.WriteLn("eeloadHook: Fast boot in progress, cached disc ELF = '%s'", disc_elf_cached.c_str());
+			if (!disc_elf_cached.empty())
 			{
-				// only allow fast boot for PS2 games
-				elfname = std::move(disc_elf);
+				elfname = disc_elf_cached;
 			}
 			else
 			{
-				Console.Warning(fmt::format("Not allowing fast boot for non-PS2 ELF {}", disc_elf));
+				CDVDDiscType disc_type;
+				std::string disc_elf;
+				cdvdGetDiscInfo(nullptr, &disc_elf, nullptr, nullptr, &disc_type);
+				if (disc_type == CDVDDiscType::PS2Disc)
+				{
+					// only allow fast boot for PS2 games
+					elfname = std::move(disc_elf);
+				}
+				else
+				{
+					Console.Warning(fmt::format("Not allowing fast boot for non-PS2 ELF {}", disc_elf));
+				}
 			}
 		}
 
@@ -712,6 +722,8 @@ void eeloadHook()
 		}
 	}
 
+	Console.WriteLn("eeloadHook: Using ELF name '%s' (fast boot in progress: %d)", elfname.c_str(),
+		VMManager::Internal::IsFastBootInProgress() ? 1 : 0);
 	VMManager::Internal::ELFLoadingOnCPUThread(std::move(elfname));
 
 	if (CHECK_EXTRAMEM)

@@ -37,7 +37,7 @@ namespace GameList
 	enum : u32
 	{
 		GAME_LIST_CACHE_SIGNATURE = 0x45434C47,
-		GAME_LIST_CACHE_VERSION = 34,
+		GAME_LIST_CACHE_VERSION = 36,
 
 
 		PLAYED_TIME_SERIAL_LENGTH = 32,
@@ -58,9 +58,12 @@ namespace GameList
 	static bool IsScannableFilename(const std::string_view path);
 
 	static bool GetIsoSerialAndCRC(const std::string& path, s32* disc_type, std::string* serial, u32* crc);
+	static bool GetVirtualIsoSerialAndCRC(const std::string& path, s32* disc_type, std::string* serial, u32* crc);
+	static std::string ExecutablePathToSerialLite(const std::string& path);
 	static Region ParseDatabaseRegion(const std::string_view db_region);
 	static bool GetElfListEntry(const std::string& path, GameList::Entry* entry);
 	static bool GetIsoListEntry(const std::string& path, GameList::Entry* entry);
+	static bool GetVirtualIsoListEntry(const std::string& path, GameList::Entry* entry);
 
 	static bool GetGameListEntryFromCache(const std::string& path, GameList::Entry* entry);
 	static void ScanDirectory(const char* path, bool recursive, bool only_cache, const std::vector<std::string>& excluded_paths,
@@ -96,6 +99,7 @@ const char* GameList::EntryTypeToString(EntryType type, bool translate)
 {
 	static constexpr std::array<const char*, static_cast<int>(EntryType::Count)> names = {
 		TRANSLATE_NOOP("GameList", "PS2 Disc"),
+		TRANSLATE_NOOP("GameList", "PS2 Disc (Folder)"),
 		TRANSLATE_NOOP("GameList", "PS1 Disc"),
 		TRANSLATE_NOOP("GameList", "ELF"),
 		TRANSLATE_NOOP("GameList", "Invalid"),
@@ -237,6 +241,12 @@ void GameList::FillBootParametersForEntry(VMBootParameters* params, const Entry*
 		params->source_type = CDVD_SourceType::Iso;
 		params->elf_override.clear();
 	}
+	else if (entry->type == GameList::EntryType::PS2DiscFolder)
+	{
+		params->filename = entry->path;
+		params->source_type = CDVD_SourceType::VirtualIso;
+		params->elf_override.clear();
+	}
 	else if (entry->type == GameList::EntryType::ELF)
 	{
 		params->filename = VMManager::GetDiscOverrideFromGameSettings(entry->path);
@@ -264,6 +274,39 @@ bool GameList::GetIsoSerialAndCRC(const std::string& path, s32* disc_type, std::
 	}
 
 	// TODO: we could include the version in the game list?
+	*disc_type = DoCDVDdetectDiskType();
+	cdvdGetDiscInfo(serial, nullptr, nullptr, crc, nullptr);
+	DoCDVDclose();
+	return true;
+}
+
+bool GameList::GetVirtualIsoSerialAndCRC(const std::string& path, s32* disc_type, std::string* serial, u32* crc)
+{
+	Error error;
+
+	const CDVD_SourceType old_source_type = CDVDsys_GetSourceType();
+	const std::string old_source_file = CDVDsys_GetFile(old_source_type);
+	const std::string old_virtual_iso_file = CDVDsys_GetFile(CDVD_SourceType::VirtualIso);
+	ScopedGuard restore_cdvd = [&old_source_type, &old_source_file, &old_virtual_iso_file]() {
+		if (CDVD)
+			DoCDVDclose();
+
+		CDVDsys_SetFile(CDVD_SourceType::VirtualIso, old_virtual_iso_file);
+		CDVDsys_SetFile(old_source_type, old_source_file);
+		CDVDsys_ChangeSource(old_source_type);
+		DoCDVDresetDiskTypeCache();
+	};
+
+	CDVDsys_SetFile(CDVD_SourceType::VirtualIso, path);
+	CDVDsys_ChangeSource(CDVD_SourceType::VirtualIso);
+	DoCDVDresetDiskTypeCache();
+
+	if (!CDVD->open(path, &error))
+	{
+		Console.Error(fmt::format("(GameList::GetVirtualIsoSerialAndCRC) CDVD open of '{}' failed: {}", path, error.GetDescription()));
+		return false;
+	}
+
 	*disc_type = DoCDVDdetectDiskType();
 	cdvdGetDiscInfo(serial, nullptr, nullptr, crc, nullptr);
 	DoCDVDclose();
@@ -435,8 +478,194 @@ bool GameList::GetIsoListEntry(const std::string& path, GameList::Entry* entry)
 	return true;
 }
 
+static u64 GetDirectorySizeBytes(const std::string& root)
+{
+	FileSystem::FindResultsArray files;
+	if (!FileSystem::FindFiles(root.c_str(), "*", FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES | FILESYSTEM_FIND_RECURSIVE, &files))
+		return 0;
+
+	u64 total = 0;
+	for (const FILESYSTEM_FIND_DATA& fd : files)
+	{
+		if (fd.Size > 0)
+			total += static_cast<u64>(fd.Size);
+	}
+	return total;
+}
+
+static bool GetSystemCnfBootPath(const std::string& root, std::string* out_iso_path, std::string* out_host_path)
+{
+	std::string system_cnf = Path::Combine(root, "SYSTEM.CNF");
+	if (!FileSystem::FileExists(system_cnf.c_str()))
+	{
+		system_cnf = Path::Combine(root, "system.cnf");
+		if (!FileSystem::FileExists(system_cnf.c_str()))
+			return false;
+	}
+
+	const auto content = FileSystem::ReadFileToString(system_cnf.c_str());
+	if (!content.has_value())
+		return false;
+
+	std::optional<std::string> boot_path;
+	const std::vector<std::string> lines = StringUtil::splitOnNewLine(*content);
+	for (const std::string& line_str : lines)
+	{
+		std::string_view line = StringUtil::StripWhitespace(line_str);
+		if (line.empty() || line[0] == '#' || line[0] == ';')
+			continue;
+
+		std::string_view key;
+		std::string_view value;
+		if (!StringUtil::ParseAssignmentString(line, &key, &value))
+			continue;
+
+		key = StringUtil::StripWhitespace(key);
+		value = StringUtil::StripWhitespace(value);
+		if (key.empty() || value.empty())
+			continue;
+
+		if (StringUtil::compareNoCase(key, "BOOT2") || StringUtil::compareNoCase(key, "BOOT"))
+		{
+			std::string out(value);
+			StringUtil::StripWhitespace(&out);
+
+			if (out.size() >= 2 && out.front() == '"' && out.back() == '"')
+				out = out.substr(1, out.size() - 2);
+
+			if (StringUtil::StartsWithNoCase(out, "cdrom0:") || StringUtil::StartsWithNoCase(out, "cdrom1:"))
+				out = out.substr(7);
+
+			while (!out.empty() && (out.front() == '\\' || out.front() == '/'))
+				out.erase(out.begin());
+
+			StringUtil::ReplaceAll(&out, "/", "\\");
+			out = StringUtil::toUpper(out);
+			if (out.find(';') == std::string::npos)
+				out += ";1";
+
+			boot_path = std::move(out);
+			break;
+		}
+	}
+
+	if (!boot_path.has_value())
+		return false;
+
+	std::string host_relative = boot_path.value();
+	const size_t version_pos = host_relative.find(';');
+	if (version_pos != std::string::npos)
+		host_relative = host_relative.substr(0, version_pos);
+
+	std::string host_path = Path::Combine(root, host_relative);
+	if (!FileSystem::FileExists(host_path.c_str()))
+		return false;
+
+	if (out_iso_path)
+		*out_iso_path = std::move(boot_path.value());
+	if (out_host_path)
+		*out_host_path = std::move(host_path);
+	return true;
+}
+
+bool GameList::GetVirtualIsoListEntry(const std::string& path, GameList::Entry* entry)
+{
+	FILESYSTEM_STAT_DATA sd;
+	if (!FileSystem::StatFile(path.c_str(), &sd))
+		return false;
+
+	// Quick validation: SYSTEM.CNF exists and BOOT2/BOOT target is present.
+	std::string iso_boot_path;
+	std::string host_boot_path;
+	if (!GetSystemCnfBootPath(path, &iso_boot_path, &host_boot_path))
+	{
+		entry->type = EntryType::Invalid;
+		entry->path = path;
+		entry->total_size = 0;
+		entry->compatibility_rating = CompatibilityRating::Unknown;
+		entry->title.clear();
+		entry->region = Region::Other;
+		return true;
+	}
+
+	entry->path = path;
+	entry->total_size = GetDirectorySizeBytes(path);
+	entry->compatibility_rating = CompatibilityRating::Unknown;
+	s32 disc_type = CDVD_TYPE_ILLEGAL;
+	if (!GetVirtualIsoSerialAndCRC(path, &disc_type, &entry->serial, &entry->crc))
+	{
+		entry->serial = ExecutablePathToSerialLite(iso_boot_path);
+		entry->crc = cdvdGetElfCRC(host_boot_path);
+	}
+	entry->type = EntryType::PS2DiscFolder;
+
+	if (const GameDatabaseSchema::GameEntry* db_entry = GameDatabase::findGame(entry->serial))
+	{
+		entry->title = std::move(db_entry->name);
+		entry->title_sort = std::move(db_entry->name_sort);
+		entry->title_en = std::move(db_entry->name_en);
+		entry->compatibility_rating = db_entry->compat;
+		entry->region = ParseDatabaseRegion(db_entry->region);
+	}
+	else
+	{
+		entry->title = Path::GetFileTitle(path);
+		entry->region = Region::Other;
+	}
+
+	return true;
+}
+
+std::string GameList::ExecutablePathToSerialLite(const std::string& path)
+{
+	std::string::size_type pos = path.rfind('\\');
+	std::string serial;
+	if (pos != std::string::npos)
+	{
+		serial = path.substr(pos + 1);
+	}
+	else
+	{
+		pos = path.rfind(':');
+		if (pos != std::string::npos)
+			serial = path.substr(pos + 1);
+		else
+			serial = path;
+	}
+
+	pos = serial.rfind(';');
+	if (pos != std::string::npos)
+		serial.erase(pos);
+
+	if (!StringUtil::WildcardMatch(serial.c_str(), "????_???.??*") &&
+		!StringUtil::WildcardMatch(serial.c_str(), "????""-???.??*"))
+	{
+		serial.clear();
+	}
+
+	for (std::string::size_type idx = 0; idx < serial.size();)
+	{
+		if (serial[idx] == '.')
+		{
+			serial.erase(idx, 1);
+			continue;
+		}
+
+		if (serial[idx] == '_')
+			serial[idx] = '-';
+		else
+			serial[idx] = static_cast<char>(std::toupper(serial[idx]));
+
+		idx++;
+	}
+
+	return serial;
+}
+
 bool GameList::PopulateEntryFromPath(const std::string& path, GameList::Entry* entry)
 {
+	if (FileSystem::DirectoryExists(path.c_str()))
+		return GetVirtualIsoListEntry(path, entry);
 	if (VMManager::IsElfFileName(path.c_str()))
 		return GetElfListEntry(path, entry);
 	else
@@ -696,19 +925,74 @@ void GameList::ScanDirectory(const char* path, bool recursive, bool only_cache, 
 
 	FileSystem::FindResultsArray files;
 	FileSystem::FindFiles(path, "*",
-		recursive ? (FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES | FILESYSTEM_FIND_RECURSIVE) :
-					(FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES),
+		recursive ? (FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_FOLDERS | FILESYSTEM_FIND_HIDDEN_FILES | FILESYSTEM_FIND_RECURSIVE) :
+					(FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_FOLDERS | FILESYSTEM_FIND_HIDDEN_FILES),
 		&files, progress);
 
 	u32 files_scanned = 0;
 	progress->SetProgressRange(static_cast<u32>(files.size()));
 	progress->SetProgressValue(0);
 
+	std::vector<std::string> folder_game_roots;
+	folder_game_roots.reserve(32);
+
+	auto is_under_folder_game = [&folder_game_roots](const std::string& path_in) -> bool {
+		if (folder_game_roots.empty())
+			return false;
+		std::string path = path_in;
+		StringUtil::ReplaceAll(&path, "/", "\\");
+		for (const std::string& root : folder_game_roots)
+		{
+			if (StringUtil::StartsWithNoCase(path, root))
+				return true;
+		}
+		return false;
+	};
+
+	for (const FILESYSTEM_FIND_DATA& ffd : files)
+	{
+		if ((ffd.Attributes & FILESYSTEM_FILE_ATTRIBUTE_DIRECTORY) == 0)
+			continue;
+		if (IsPathExcluded(excluded_paths, ffd.FileName))
+			continue;
+
+		const std::string system_cnf = Path::Combine(ffd.FileName, "SYSTEM.CNF");
+		const std::string system_cnf_lower = Path::Combine(ffd.FileName, "system.cnf");
+		if (!FileSystem::FileExists(system_cnf.c_str()) && !FileSystem::FileExists(system_cnf_lower.c_str()))
+			continue;
+
+		std::string root = ffd.FileName;
+		StringUtil::ReplaceAll(&root, "/", "\\");
+		if (!root.empty() && root.back() != '\\')
+			root.push_back('\\');
+		folder_game_roots.push_back(std::move(root));
+	}
+
 	for (FILESYSTEM_FIND_DATA& ffd : files)
 	{
 		files_scanned++;
 
-		if (progress->IsCancelled() || !GameList::IsScannableFilename(ffd.FileName) || IsPathExcluded(excluded_paths, ffd.FileName))
+		const bool is_dir = ((ffd.Attributes & FILESYSTEM_FILE_ATTRIBUTE_DIRECTORY) != 0);
+		if (progress->IsCancelled() || IsPathExcluded(excluded_paths, ffd.FileName))
+			continue;
+
+		if (!is_dir)
+		{
+			if (is_under_folder_game(ffd.FileName))
+				continue;
+			if (!GameList::IsScannableFilename(ffd.FileName))
+				continue;
+		}
+
+		if (is_dir)
+		{
+			const std::string system_cnf = Path::Combine(ffd.FileName, "SYSTEM.CNF");
+			const std::string system_cnf_lower = Path::Combine(ffd.FileName, "system.cnf");
+			if (!FileSystem::FileExists(system_cnf.c_str()) && !FileSystem::FileExists(system_cnf_lower.c_str()))
+				continue;
+		}
+
+		if (progress->IsCancelled())
 		{
 			continue;
 		}

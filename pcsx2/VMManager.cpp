@@ -967,7 +967,15 @@ bool VMManager::UpdateGameSettingsLayer()
 	std::unique_ptr<INISettingsInterface> new_interface;
 	if (s_disc_crc != 0)
 	{
-		std::string filename(GetGameSettingsPath(GetSerialForGameSettings(), s_disc_crc));
+		const std::string serial = GetSerialForGameSettings();
+		std::string filename(GetGameSettingsPath(serial, s_disc_crc));
+		if (!FileSystem::FileExists(filename.c_str()) && CDVDsys_GetSourceType() == CDVD_SourceType::VirtualIso && !serial.empty())
+		{
+			// Folder games are stored in the game list before a boot-time executable CRC exists, so
+			// their properties are saved as serial_00000000.ini. Keep normal ISO behavior unchanged.
+			filename = GetGameSettingsPath(serial, 0);
+		}
+
 		if (!FileSystem::FileExists(filename.c_str()))
 		{
 			// try the legacy format (crc.ini)
@@ -1051,6 +1059,7 @@ void VMManager::UpdateDiscDetails(bool booting)
 		else if (CDVDsys_GetSourceType() != CDVD_SourceType::NoDisc)
 		{
 			cdvdGetDiscInfo(&s_disc_serial, &s_disc_elf, &s_disc_version, &s_disc_crc, nullptr);
+			Console.WriteLn("UpdateDiscDetails: disc ELF = '%s'", s_disc_elf.c_str());
 			serial_is_valid = !s_disc_serial.empty();
 		}
 		else if (!s_elf_override.empty())
@@ -1140,6 +1149,8 @@ void VMManager::UpdateDiscDetails(bool booting)
 
 	UpdateGameSettingsLayer();
 	ApplySettings();
+	if (booting && CDVDsys_GetSourceType() == CDVD_SourceType::VirtualIso)
+		CDVDvirtualiso_ReloadMods();
 
 	// Patches are game-dependent, thus should get applied after game settings ia loaded.
 	Patch::ReloadPatches(s_disc_serial, HasBootedELF() ? s_current_crc : 0, true, true, false, false);
@@ -1403,11 +1414,17 @@ VMBootResult VMManager::Initialize(const VMBootParameters& boot_params, Error* e
 	// resolve source type
 	if (boot_params.source_type.has_value())
 	{
-		if (boot_params.source_type.value() == CDVD_SourceType::Iso &&
-			!FileSystem::FileExists(boot_params.filename.c_str()))
+		const CDVD_SourceType source_type = boot_params.source_type.value();
+		if (source_type == CDVD_SourceType::Iso && !FileSystem::FileExists(boot_params.filename.c_str()))
 		{
 			Error::SetStringFmt(error,
 				TRANSLATE_FS("VMManager", "Requested filename '{}' does not exist."), boot_params.filename);
+			return VMBootResult::StartupFailure;
+		}
+		if (source_type == CDVD_SourceType::VirtualIso && !FileSystem::DirectoryExists(boot_params.filename.c_str()))
+		{
+			Error::SetStringFmt(error,
+				TRANSLATE_FS("VMManager", "Requested folder '{}' does not exist."), boot_params.filename);
 			return VMBootResult::StartupFailure;
 		}
 
@@ -1479,7 +1496,7 @@ VMBootResult VMManager::Initialize(const VMBootParameters& boot_params, Error* e
 
 		Hle_SetHostRoot(s_elf_override.c_str());
 	}
-	else if (CDVDsys_GetSourceType() == CDVD_SourceType::Iso)
+	else if (CDVDsys_GetSourceType() == CDVD_SourceType::Iso || CDVDsys_GetSourceType() == CDVD_SourceType::VirtualIso)
 	{
 		Hle_SetHostRoot(CDVDsys_GetFile(CDVDsys_GetSourceType()).c_str());
 	}
@@ -2838,6 +2855,17 @@ bool VMManager::Internal::IsExecutionInterrupted()
 
 void VMManager::Internal::ELFLoadingOnCPUThread(std::string elf_path)
 {
+	if (elf_path.empty() ||
+		StringUtil::StartsWithNoCase(elf_path, "rom0:") ||
+		StringUtil::StartsWithNoCase(elf_path, "rom1:") ||
+		StringUtil::StartsWithNoCase(elf_path, "rom2:") ||
+		StringUtil::StartsWithNoCase(elf_path, "rom3:"))
+	{
+		// Ignore BIOS/PS2LOGO and empty paths to avoid noisy logs and
+		// unnecessary ELF parsing during full boot.
+		return;
+	}
+
 	const bool was_running_bios = (s_current_crc == 0);
 
 	UpdateELFInfo(std::move(elf_path));

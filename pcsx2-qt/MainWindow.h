@@ -98,6 +98,7 @@ public:
 	__fi QLabel* getStatusVerboseWidget() const { return m_status_verbose_widget; }
 	__fi QLabel* getStatusRendererWidget() const { return m_status_renderer_widget; }
 	__fi QLabel* getStatusResolutionWidget() const { return m_status_resolution_widget; }
+	__fi QLabel* getStatusGameCRCWidget() const { return m_status_game_crc_widget; }
 	__fi QLabel* getStatusFPSWidget() const { return m_status_fps_widget; }
 	__fi QLabel* getStatusVPSWidget() const { return m_status_vps_widget; }
 	__fi QLabel* getStatusSpeedWidget() const { return m_status_speed_widget; }
@@ -148,6 +149,7 @@ private Q_SLOTS:
 	void onGameListEntryContextMenuRequested(const QPoint& point);
 
 	void onStartFileActionTriggered();
+	void onStartFolderActionTriggered();
 	void onStartDiscActionTriggered();
 	void onStartBIOSActionTriggered();
 	void onChangeDiscFromFileActionTriggered();
@@ -310,6 +312,7 @@ private:
 	QLabel* m_status_vps_widget = nullptr;
 	QLabel* m_status_speed_widget = nullptr;
 	QLabel* m_status_resolution_widget = nullptr;
+	QLabel* m_status_game_crc_widget = nullptr;
 
 	QMenu* m_settings_toolbar_menu = nullptr;
 

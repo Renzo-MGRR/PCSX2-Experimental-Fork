@@ -41,7 +41,10 @@ bool ElfObject::OpenIsoFile(std::string srcfile, IsoReader& isor, bool isPSXElf_
 {
 	const auto de = isor.LocateFile(srcfile, error);
 	if (!de)
+	{
+		Console.Error(fmt::format("ElfObject: Failed to locate '{}' in ISO: {}", srcfile, error ? error->GetDescription() : "unknown error"));
 		return false;
+	}
 
 	if (!CheckElfSize(de->length_le, error))
 		return false;

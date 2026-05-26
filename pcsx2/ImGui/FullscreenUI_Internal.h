@@ -267,6 +267,7 @@ namespace FullscreenUI
 	void DoStartPath(
 		const std::string& path, std::optional<s32> state_index = std::nullopt, std::optional<bool> fast_boot = std::nullopt);
 	void DoStartFile();
+	void DoStartFolder();
 	void DoStartBIOS();
 	void DoStartDisc(const std::string& drive);
 	void DoStartDisc();

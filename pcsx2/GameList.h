@@ -26,6 +26,7 @@ namespace GameList
 	enum class EntryType
 	{
 		PS2Disc,
+		PS2DiscFolder,
 		PS1Disc,
 		ELF,
 		Invalid,
@@ -101,7 +102,7 @@ namespace GameList
 
 		CompatibilityRating compatibility_rating = CompatibilityRating::Unknown;
 
-		__fi bool IsDisc() const { return (type == EntryType::PS1Disc || type == EntryType::PS2Disc); }
+		__fi bool IsDisc() const { return (type == EntryType::PS1Disc || type == EntryType::PS2Disc || type == EntryType::PS2DiscFolder); }
 	};
 
 	const char* EntryTypeToString(EntryType type, bool translate);

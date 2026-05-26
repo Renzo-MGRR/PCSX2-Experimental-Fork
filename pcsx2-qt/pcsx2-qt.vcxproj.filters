@@ -116,6 +116,9 @@
     <ClCompile Include="Settings\MemoryCardSettingsWidget.cpp">
       <Filter>Settings</Filter>
     </ClCompile>
+    <ClCompile Include="Settings\ModSettingsWidget.cpp">
+      <Filter>Settings</Filter>
+    </ClCompile>
     <ClCompile Include="Settings\AudioSettingsWidget.cpp">
       <Filter>Settings</Filter>
     </ClCompile>
@@ -374,6 +377,9 @@
       <Filter>Settings</Filter>
     </QtMoc>
     <QtMoc Include="Settings\MemoryCardSettingsWidget.h">
+      <Filter>Settings</Filter>
+    </QtMoc>
+    <QtMoc Include="Settings\ModSettingsWidget.h">
       <Filter>Settings</Filter>
     </QtMoc>
     <QtMoc Include="Settings\AudioSettingsWidget.h">

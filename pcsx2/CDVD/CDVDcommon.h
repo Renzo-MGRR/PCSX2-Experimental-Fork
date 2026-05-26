@@ -146,6 +146,7 @@ enum class CDVD_SourceType : uint8_t
 	Iso, // use built in ISO api
 	Disc, // use built in Disc api
 	NoDisc, // use built in CDVDnull
+	VirtualIso, // use virtual ISO (directory-backed)
 };
 
 struct CDVD_API
@@ -182,6 +183,8 @@ extern const CDVD_API* CDVD; // currently active CDVD access mode api (either Is
 extern const CDVD_API CDVDapi_Iso;
 extern const CDVD_API CDVDapi_Disc;
 extern const CDVD_API CDVDapi_NoDisc;
+extern const CDVD_API CDVDapi_VirtualIso;
+extern void CDVDvirtualiso_ReloadMods();
 
 extern u8 strack;
 extern u8 etrack;

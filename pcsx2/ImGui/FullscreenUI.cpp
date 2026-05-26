@@ -826,6 +826,26 @@ void FullscreenUI::DoStartFile()
 	OpenFileSelector(FSUI_ICONSTR(ICON_FA_FOLDER_OPEN, "Select Disc Image"), false, std::move(callback), GetOpenFileFilters());
 }
 
+void FullscreenUI::DoStartFolder()
+{
+	auto callback = [](const std::string& path) {
+		if (!path.empty())
+		{
+			VMBootParameters params;
+			params.filename = path;
+			params.source_type = CDVD_SourceType::VirtualIso;
+			params.fast_boot = true;
+			Host::RunOnCPUThread([params = std::move(params)]() {
+				DoVMInitialize(std::move(params), false);
+			});
+		}
+
+		CloseFileSelector();
+	};
+
+	OpenFileSelector(FSUI_ICONSTR(ICON_FA_FOLDER_OPEN, "Select Game Folder"), true, std::move(callback), {"*"});
+}
+
 void FullscreenUI::DoStartBIOS()
 {
 	Host::RunOnCPUThread([]() {
@@ -1387,7 +1407,7 @@ void FullscreenUI::DrawStartGameWindow()
 
 	ImGui::PushStyleColor(ImGuiCol_Text, UIBackgroundTextColor);
 
-	if (BeginHorizontalMenu("start_game_window", menu_pos, menu_size, 4))
+	if (BeginHorizontalMenu("start_game_window", menu_pos, menu_size, 5))
 	{
 		ResetFocusHere();
 
@@ -1395,6 +1415,12 @@ void FullscreenUI::DrawStartGameWindow()
 				FSUI_CSTR("Launch a game by selecting a file/disc image.")))
 		{
 			DoStartFile();
+		}
+
+		if (HorizontalMenuSvgItem("fullscreenui/start-file.svg", FSUI_CSTR("Start Folder"),
+				FSUI_CSTR("Launch a game from an extracted folder (Virtual ISO).")))
+		{
+			DoStartFolder();
 		}
 
 		if (HorizontalMenuSvgItem("fullscreenui/drive-cdrom.svg", FSUI_CSTR("Start Disc"),
@@ -3256,6 +3282,7 @@ GSTexture* FullscreenUI::GetTextureForGameListEntryType(GameList::EntryType type
 
 		case GameList::EntryType::PS1Disc:
 		case GameList::EntryType::PS2Disc:
+		case GameList::EntryType::PS2DiscFolder:
 		default:
 			return GetCachedSvgTexture("fullscreenui/media-cdrom.svg", size, mode);
 	}
@@ -4068,6 +4095,8 @@ TRANSLATE_NOOP("FullscreenUI", "Exit");
 TRANSLATE_NOOP("FullscreenUI", "Return to desktop mode, or exit the application.");
 TRANSLATE_NOOP("FullscreenUI", "Start File");
 TRANSLATE_NOOP("FullscreenUI", "Launch a game by selecting a file/disc image.");
+TRANSLATE_NOOP("FullscreenUI", "Start Folder");
+TRANSLATE_NOOP("FullscreenUI", "Launch a game from an extracted folder (Virtual ISO).");
 TRANSLATE_NOOP("FullscreenUI", "Start Disc");
 TRANSLATE_NOOP("FullscreenUI", "Start a game from a disc in your PC's DVD drive.");
 TRANSLATE_NOOP("FullscreenUI", "Start BIOS");
@@ -4177,6 +4206,7 @@ TRANSLATE_NOOP("FullscreenUI", "Change View");
 TRANSLATE_NOOP("FullscreenUI", "Launch Options");
 TRANSLATE_NOOP("FullscreenUI", "Startup Error");
 TRANSLATE_NOOP("FullscreenUI", "Select Disc Image");
+TRANSLATE_NOOP("FullscreenUI", "Select Game Folder");
 TRANSLATE_NOOP("FullscreenUI", "Select Disc Drive");
 TRANSLATE_NOOP("FullscreenUI", "WARNING: Memory Card Busy");
 TRANSLATE_NOOP("FullscreenUI", "Resume Game");

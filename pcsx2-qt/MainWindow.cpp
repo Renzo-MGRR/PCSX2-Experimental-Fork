@@ -49,6 +49,7 @@
 
 #include <QtCore/QDateTime>
 #include <QtCore/QDir>
+#include <QtCore/QFileInfo>
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QInputDialog>
@@ -229,6 +230,12 @@ void MainWindow::setupAdditionalUi()
 	m_status_resolution_widget->setFixedSize(75, 16);
 	m_status_resolution_widget->hide();
 
+	m_status_game_crc_widget = new QLabel(m_ui.statusBar);
+	m_status_game_crc_widget->setFixedHeight(16);
+	m_status_game_crc_widget->setMinimumWidth(100);
+	m_status_game_crc_widget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+	m_status_game_crc_widget->hide();
+
 	m_status_fps_widget = new QLabel(m_ui.statusBar);
 	m_status_fps_widget->setFixedHeight(16);
 	m_status_fps_widget->setMinimumWidth(60);
@@ -295,6 +302,7 @@ void MainWindow::setupAdditionalUi()
 void MainWindow::connectSignals()
 {
 	connect(m_ui.actionStartFile, &QAction::triggered, this, &MainWindow::onStartFileActionTriggered);
+	connect(m_ui.actionStartFolder, &QAction::triggered, this, &MainWindow::onStartFolderActionTriggered);
 	connect(m_ui.actionStartDisc, &QAction::triggered, this, &MainWindow::onStartDiscActionTriggered);
 	connect(m_ui.actionStartBios, &QAction::triggered, this, &MainWindow::onStartBIOSActionTriggered);
 	connect(m_ui.actionChangeDiscFromFile, &QAction::triggered, this, &MainWindow::onChangeDiscFromFileActionTriggered);
@@ -308,6 +316,7 @@ void MainWindow::connectSignals()
 	connect(m_ui.actionStartFullscreenUI, &QAction::triggered, this, &MainWindow::onStartFullscreenUITriggered);
 	connect(m_ui.actionToolbarStartFullscreenUI, &QAction::triggered, this, &MainWindow::onStartFullscreenUITriggered);
 	connect(m_ui.actionToolbarStartFile, &QAction::triggered, this, &MainWindow::onStartFileActionTriggered);
+	connect(m_ui.actionToolbarStartFolder, &QAction::triggered, this, &MainWindow::onStartFolderActionTriggered);
 	connect(m_ui.actionToolbarStartDisc, &QAction::triggered, this, &MainWindow::onStartDiscActionTriggered);
 	connect(m_ui.actionToolbarStartBios, &QAction::triggered, this, &MainWindow::onStartBIOSActionTriggered);
 	connect(m_ui.actionToolbarChangeDisc, &QAction::triggered, [this] { m_ui.menuChangeDisc->exec(QCursor::pos()); });
@@ -908,9 +917,11 @@ void MainWindow::updateEmulationActions(bool starting, bool running, bool stoppi
 	const bool starting_or_running_or_stopping = starting || running || stopping;
 
 	m_ui.actionStartFile->setDisabled(starting_or_running_or_stopping);
+	m_ui.actionStartFolder->setDisabled(starting_or_running_or_stopping);
 	m_ui.actionStartDisc->setDisabled(starting_or_running_or_stopping);
 	m_ui.actionStartBios->setDisabled(starting_or_running_or_stopping);
 	m_ui.actionToolbarStartFile->setDisabled(starting_or_running_or_stopping);
+	m_ui.actionToolbarStartFolder->setDisabled(starting_or_running_or_stopping);
 	m_ui.actionToolbarStartDisc->setDisabled(starting_or_running_or_stopping);
 	m_ui.actionToolbarStartBios->setDisabled(starting_or_running_or_stopping);
 	m_ui.actionStartFullscreenUI->setDisabled(starting_or_running_or_stopping);
@@ -999,6 +1010,7 @@ void MainWindow::updateStatusBarWidgetVisibility()
 	Update(m_status_verbose_widget, s_vm_valid, 1);
 	Update(m_status_renderer_widget, s_vm_valid, 0);
 	Update(m_status_resolution_widget, s_vm_valid, 0);
+	Update(m_status_game_crc_widget, s_vm_valid, 0);
 	Update(m_status_fps_widget, s_vm_valid, 0);
 	Update(m_status_vps_widget, s_vm_valid, 0);
 	Update(m_status_speed_widget, s_vm_valid, 0);
@@ -1627,6 +1639,16 @@ void MainWindow::onStartFileActionTriggered()
 	doStartFile(std::nullopt, path);
 }
 
+void MainWindow::onStartFolderActionTriggered()
+{
+	const QString path(QDir::toNativeSeparators(QFileDialog::getExistingDirectory(this, tr("Start Folder"), QString(),
+		QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks)));
+	if (path.isEmpty())
+		return;
+
+	doStartFile(CDVD_SourceType::VirtualIso, path);
+}
+
 void MainWindow::onStartDiscActionTriggered()
 {
 	QString path(getDiscDevicePath(tr("Start Disc")));
@@ -2172,6 +2194,7 @@ void MainWindow::onVMStopped()
 	m_last_fps_status = empty_string;
 	m_status_renderer_widget->setText(empty_string);
 	m_status_resolution_widget->setText(empty_string);
+	m_status_game_crc_widget->setText(empty_string);
 	m_status_fps_widget->setText(empty_string);
 	m_status_vps_widget->setText(empty_string);
 	m_status_speed_widget->setText(empty_string);
@@ -2210,6 +2233,12 @@ void MainWindow::onGameChanged(const QString& title, const QString& elf_override
 	s_current_disc_serial = serial;
 	s_current_disc_crc = disc_crc;
 	s_current_running_crc = crc;
+	if (crc != 0)
+		m_status_game_crc_widget->setText(tr("CRC: %1").arg(crc, 8, 16, QLatin1Char('0')).toUpper());
+	else if (disc_crc != 0)
+		m_status_game_crc_widget->setText(tr("CRC: %1").arg(disc_crc, 8, 16, QLatin1Char('0')).toUpper());
+	else
+		m_status_game_crc_widget->setText(tr("CRC: 00000000"));
 	updateWindowTitle();
 	updateGameDependentActions();
 }

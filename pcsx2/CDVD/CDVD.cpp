@@ -503,9 +503,11 @@ static CDVDDiscType GetPS2ElfName(IsoReader& isor, std::string* name, std::strin
 		}
 		else if (key == "BOOT")
 		{
-			DevCon.WriteLn(Color_StrongBlue, fmt::format("(SYSTEM.CNF) Detected PSX/PSone Disc = {}", value));
+			const bool is_virtual_iso = (CDVDsys_GetSourceType() == CDVD_SourceType::VirtualIso);
+			DevCon.WriteLn(Color_StrongBlue, fmt::format("(SYSTEM.CNF) Detected {} = {}",
+				is_virtual_iso ? "PS2 Folder Disc" : "PSX/PSone Disc", value));
 			*name = value;
-			retype = CDVDDiscType::PS1Disc;
+			retype = is_virtual_iso ? CDVDDiscType::PS2Disc : CDVDDiscType::PS1Disc;
 		}
 		else if (key == "VMODE")
 		{
@@ -584,6 +586,8 @@ void cdvdGetDiscInfo(std::string* out_serial, std::string* out_elf_path, std::st
 	CDVDDiscType disc_type = CDVDDiscType::Other;
 	if (!isor.Open(&error) || (disc_type = GetPS2ElfName(isor, &elfpath, &version, &error)) == CDVDDiscType::Other)
 		Console.Error(fmt::format("Failed to get ELF name: {}", error.GetDescription()));
+	else
+		Console.WriteLn(fmt::format("cdvdGetDiscInfo: ELF path is '{}'", elfpath));
 
 	// Don't bother parsing it if we don't need the CRC.
 	if (out_crc)
@@ -1101,7 +1105,6 @@ static void mechaDecryptBytes(u32 madr, int size)
 int cdvdReadSector()
 {
 	s32 bcr;
-
 	CDVD_LOG("SECTOR %d (BCR %x;%x)", cdvd.CurrentSector, HW_DMA3_BCR_H16, HW_DMA3_BCR_L16);
 
 	bcr = (HW_DMA3_BCR_H16 * HW_DMA3_BCR_L16) * 4;

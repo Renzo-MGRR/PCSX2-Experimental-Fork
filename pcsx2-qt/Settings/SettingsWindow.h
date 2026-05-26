@@ -34,6 +34,7 @@ class GraphicsSettingsWidget;
 class OSDSettingsWidget;
 class AudioSettingsWidget;
 class MemoryCardSettingsWidget;
+class ModSettingsWidget;
 class FolderSettingsWidget;
 class DEV9SettingsWidget;
 class AchievementSettingsWidget;
@@ -118,7 +119,7 @@ protected:
 private:
 	enum : u32
 	{
-		MAX_SETTINGS_WIDGETS = 14
+		MAX_SETTINGS_WIDGETS = 15
 	};
 
 	void setupUi(const GameList::Entry* game);
@@ -143,6 +144,7 @@ private:
 	OSDSettingsWidget* m_osd_settings = nullptr;
 	AudioSettingsWidget* m_audio_settings = nullptr;
 	MemoryCardSettingsWidget* m_memory_card_settings = nullptr;
+	ModSettingsWidget* m_mod_settings = nullptr;
 	FolderSettingsWidget* m_folder_settings = nullptr;
 	DEV9SettingsWidget* m_dev9_settings = nullptr;
 	AchievementSettingsWidget* m_achievement_settings = nullptr;

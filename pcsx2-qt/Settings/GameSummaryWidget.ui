@@ -190,6 +190,14 @@
      </item>
      <item>
       <property name="text">
+       <string>PS2 Disc (Folder)</string>
+      </property>
+      <property name="icon">
+       <iconset theme="disc-2-line"/>
+      </property>
+     </item>
+     <item>
+      <property name="text">
        <string>PS1 Disc</string>
       </property>
       <property name="icon">

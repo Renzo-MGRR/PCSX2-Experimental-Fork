@@ -69,6 +69,7 @@
      </property>
     </widget>
     <addaction name="actionStartFile"/>
+    <addaction name="actionStartFolder"/>
     <addaction name="actionStartDisc"/>
     <addaction name="actionStartBios"/>
     <addaction name="actionStartFullscreenUI"/>
@@ -249,6 +250,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionToolbarStartFile"/>
+   <addaction name="actionToolbarStartFolder"/>
    <addaction name="actionToolbarStartDisc"/>
    <addaction name="actionToolbarStartBios"/>
    <addaction name="actionToolbarStartFullscreenUI"/>
@@ -279,12 +281,28 @@
     <string>Start &amp;File...</string>
    </property>
   </action>
+  <action name="actionStartFolder">
+   <property name="icon">
+    <iconset theme="folder-line"/>
+   </property>
+   <property name="text">
+    <string>Start &amp;Folder...</string>
+   </property>
+  </action>
   <action name="actionToolbarStartFile">
    <property name="icon">
     <iconset theme="file-line"/>
    </property>
    <property name="text">
     <string comment="In Toolbar">Start File</string>
+   </property>
+  </action>
+  <action name="actionToolbarStartFolder">
+   <property name="icon">
+    <iconset theme="folder-line"/>
+   </property>
+   <property name="text">
+    <string comment="In Toolbar">Start Folder</string>
    </property>
   </action>
   <action name="actionStartDisc">
@@ -846,14 +864,14 @@
     <string>Open Memory Card Directory...</string>
    </property>
   </action>
-  <action name="actionOpenDataDirectory">
-   <property name="icon">
-    <iconset theme="folder-open-line"/>
-   </property>
-   <property name="text">
-    <string>&amp;Open Data Directory...</string>
-   </property>
-  </action>
+    <action name="actionOpenDataDirectory">
+      <property name="icon">
+       <iconset theme="folder-open-line"/>
+      </property>
+      <property name="text">
+       <string>&amp;Open Data Directory...</string>
+      </property>
+    </action>
   <action name="actionToggleSoftwareRendering">
    <property name="icon">
     <iconset theme="brush-line"/>

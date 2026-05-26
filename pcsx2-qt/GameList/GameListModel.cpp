@@ -471,6 +471,7 @@ QIcon GameListModel::getIconForType(const GameList::EntryType type)
 	switch (type)
 	{
 		case GameList::EntryType::PS2Disc:
+		case GameList::EntryType::PS2DiscFolder:
 		case GameList::EntryType::PS1Disc:
 			return QIcon::fromTheme("disc-2-line");
 

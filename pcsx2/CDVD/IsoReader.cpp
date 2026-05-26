@@ -117,6 +117,7 @@ std::string_view IsoReader::GetDirectoryEntryFileName(const u8* sector, u32 de_s
 std::optional<IsoReader::ISODirectoryEntry> IsoReader::LocateFile(
 	const std::string_view path, u8* sector_buffer, u32 directory_record_lba, u32 directory_record_size, Error* error)
 {
+	Console.WriteLn(fmt::format("ISOReader: LocateFile '{}' (LSN {}, size {})", path, directory_record_lba, directory_record_size));
 	if (directory_record_size == 0)
 	{
 		Error::SetString(error, fmt::format("Directory entry record size 0 while looking for '{}'", path));
@@ -188,6 +189,7 @@ std::optional<IsoReader::ISODirectoryEntry> IsoReader::LocateFile(
 	}
 
 	Error::SetString(error, fmt::format("Path component '{}' not found", path_component));
+	Console.Warning(fmt::format("ISOReader: Path component '{}' not found in '{}'", path_component, path));
 	return std::nullopt;
 }
 
@@ -272,9 +274,13 @@ bool IsoReader::DirectoryExists(const std::string_view path, Error* error)
 
 bool IsoReader::ReadFile(const std::string_view path, std::vector<u8>* data, Error* error)
 {
+	Console.WriteLn(fmt::format("ISOReader: ReadFile '{}'", path));
 	auto de = LocateFile(path, error);
 	if (!de)
+	{
+		Console.Warning(fmt::format("ISOReader: ReadFile '{}' failed: {}", path, error ? error->GetDescription() : "unknown error"));
 		return false;
+	}
 
 	return ReadFile(de.value(), data, error);
 }
@@ -284,12 +290,14 @@ bool IsoReader::ReadFile(const ISODirectoryEntry& de, std::vector<u8>* data, Err
 	if (de.flags & ISODirectoryEntryFlag_Directory)
 	{
 		Error::SetString(error, "File is a directory");
+		Console.Warning("ISOReader: ReadFile failed: target is a directory");
 		return false;
 	}
 
 	if (de.length_le == 0)
 	{
 		data->clear();
+		Console.WriteLn("ISOReader: ReadFile success (empty file)");
 		return true;
 	}
 
@@ -299,10 +307,14 @@ bool IsoReader::ReadFile(const ISODirectoryEntry& de, std::vector<u8>* data, Err
 	for (u32 i = 0, lsn = de.location_le; i < num_sectors; i++, lsn++)
 	{
 		if (!ReadSector(data->data() + (i * SECTOR_SIZE), lsn, error))
+		{
+			Console.Warning(fmt::format("ISOReader: ReadFile failed at LSN {}", lsn));
 			return false;
+		}
 	}
 
 	// Might not be sector aligned, so reduce it back.
 	data->resize(de.length_le);
+	Console.WriteLn(fmt::format("ISOReader: ReadFile success ({} bytes)", de.length_le));
 	return true;
 }
